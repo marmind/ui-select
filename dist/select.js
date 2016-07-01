@@ -577,71 +577,77 @@ uis.controller('uiSelectCtrl',
 
 
   // When the user selects an item with ENTER or clicks the dropdown
-  ctrl.select = function(item, skipFocusser, $event) {
-    if (item === undefined || !item._uiSelectChoiceDisabled) {
+  // When the user selects an item with ENTER or clicks the dropdown
+  ctrl.select = function (item, skipFocusser, $event) {
+      if (item && item._uiSelectChoiceDisabled === true)
+          return;
 
-      if ( ! ctrl.items && ! ctrl.search && ! ctrl.tagging.isActivated) return;
+      if (!ctrl.items && !ctrl.search && !ctrl.tagging.isActivated)
+          return;
 
-      if (!item || !item._uiSelectChoiceDisabled) {
-        if(ctrl.tagging.isActivated) {
+      if (ctrl.tagging.isActivated) {
+          //click is made on existing item, prevent from tagging, ctrl.search does not matter
+          var manualSelection = false;
+          if ($event && $event.type === 'click' && item) {
+              manualSelection = true;
+          }
+
           // if taggingLabel is disabled, we pull from ctrl.search val
-          if ( ctrl.taggingLabel === false ) {
-            if ( ctrl.activeIndex < 0 ) {
-              item = ctrl.tagging.fct !== undefined ? ctrl.tagging.fct(ctrl.search) : ctrl.search;
-              if (!item || angular.equals( ctrl.items[0], item ) ) {
-                return;
+          if (!ctrl.taggingLabel && manualSelection === false) {
+              if (ctrl.activeIndex < 0) {
+                  item = ctrl.tagging.fct !== undefined ? ctrl.tagging.fct(ctrl.search) : ctrl.search;
+                  if (!item || angular.equals(ctrl.items[0], item)) {
+                      return;
+                  }
+              } else {
+                  // keyboard nav happened first, user selected from dropdown
+                  item = ctrl.items[ctrl.activeIndex];
               }
-            } else {
-              // keyboard nav happened first, user selected from dropdown
-              item = ctrl.items[ctrl.activeIndex];
-            }
           } else {
-            // tagging always operates at index zero, taggingLabel === false pushes
-            // the ctrl.search value without having it injected
-            if ( ctrl.activeIndex === 0 ) {
-              // ctrl.tagging pushes items to ctrl.items, so we only have empty val
-              // for `item` if it is a detected duplicate
-              if ( item === undefined ) return;
+              // tagging always operates at index zero, taggingLabel === false pushes
+              // the ctrl.search value without having it injected
+              if (ctrl.activeIndex === 0) {
+                  // ctrl.tagging pushes items to ctrl.items, so we only have empty val
+                  // for `item` if it is a detected duplicate
+                  if (item === undefined) return;
 
-              // create new item on the fly if we don't already have one;
-              // use tagging function if we have one
-              if ( ctrl.tagging.fct !== undefined && typeof item === 'string' ) {
-                item = ctrl.tagging.fct(item);
-                if (!item) return;
-              // if item type is 'string', apply the tagging label
-              } else if ( typeof item === 'string' ) {
-                // trim the trailing space
-                item = item.replace(ctrl.taggingLabel,'').trim();
+                  // create new item on the fly if we don't already have one;
+                  // use tagging function if we have one
+                  if (ctrl.tagging.fct !== undefined && typeof item === 'string') {
+                      item = ctrl.tagging.fct(ctrl.search);
+                      if (!item) return;
+                      // if item type is 'string', apply the tagging label
+                  } else if (typeof item === 'string') {
+                      // trim the trailing space
+                      item = item.replace(ctrl.taggingLabel, '').trim();
+                  }
               }
-            }
           }
           // search ctrl.selected for dupes potentially caused by tagging and return early if found
-          if ( ctrl.selected && angular.isArray(ctrl.selected) && ctrl.selected.filter( function (selection) { return angular.equals(selection, item); }).length > 0 ) {
-            ctrl.close(skipFocusser);
-            return;
+          if (ctrl.selected && angular.isArray(ctrl.selected) && ctrl.selected.filter(function (selection) { return angular.equals(selection, item); }).length > 0) {
+              ctrl.close(skipFocusser);
+              return;
           }
-        }
-
-        $scope.$broadcast('uis:select', item);
-
-        var locals = {};
-        locals[ctrl.parserResult.itemName] = item;
-
-        $timeout(function(){
-          ctrl.onSelectCallback($scope, {
-            $item: item,
-            $model: ctrl.parserResult.modelMapper($scope, locals)
-          });
-        });
-
-        if (ctrl.closeOnSelect) {
-          ctrl.close(skipFocusser);
-        }
-        if ($event && $event.type === 'click') {
-          ctrl.clickTriggeredSelect = true;
-        }
       }
-    }
+
+      $scope.$broadcast('uis:select', item);
+
+      var locals = {};
+      locals[ctrl.parserResult.itemName] = item;
+
+      $timeout(function () {
+          ctrl.onSelectCallback($scope, {
+              $item: item,
+              $model: ctrl.parserResult.modelMapper($scope, locals)
+          });
+      });
+
+      if (ctrl.closeOnSelect) {
+          ctrl.close(skipFocusser);
+      }
+      if ($event && $event.type === 'click') {
+          ctrl.clickTriggeredSelect = true;
+      }
   };
 
   // Closes the dropdown
